@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PasteVault</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap');
+:root {
+  --bg:#0e0e10; --s1:#18181c; --s2:#222228; --s3:#2a2a32;
+  --bd:rgba(255,255,255,.08); --bd2:rgba(255,255,255,.15); --bd3:rgba(255,255,255,.22);
+  --ac:#7c6af7; --ac2:#a78bfa;
+  --tx:#e8e8f0; --mt:#888899; --mt2:#555566;
+  --ok:#4ade80; --er:#f87171; --wn:#fbbf24;
+  --mono:'Space Mono',monospace; --sans:'Noto Sans SC',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);min-height:100vh}
+/* ── layout ── */
+.page{max-width:820px;margin:0 auto;padding:2rem 1.25rem 5rem}
+/* ── header ── */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:2.5rem;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#7c6af7,#c084fc);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:18px;color:#fff}
+.brand-name{font-family:var(--mono);font-size:15px;letter-spacing:.08em}
+.brand-sub{font-size:11px;color:var(--mt);font-family:var(--mono)}
+.header-actions{display:flex;gap:8px;align-items:center}
+/* ── buttons ── */
+.btn{padding:7px 16px;border-radius:7px;font-size:13px;cursor:pointer;border:1px solid var(--bd2);background:transparent;color:var(--mt);font-family:var(--sans);transition:all .15s}
+.btn:hover{color:var(--tx);border-color:var(--bd3)}
+.btn-primary{background:linear-gradient(135deg,var(--ac),#a78bfa);border:none;color:#fff;font-weight:500}
+.btn-primary:hover{opacity:.88;color:#fff}
+.btn-danger{border-color:rgba(248,113,113,.3);color:var(--er)}
+.btn-danger:hover{background:rgba(248,113,113,.1);border-color:var(--er)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+/* ── nav tabs ── */
+.nav-tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:1.75rem;gap:0}
+.ntab{padding:.6rem 1.2rem;font-size:13px;color:var(--mt);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:var(--mono);letter-spacing:.04em;transition:all .18s}
+.ntab.active{color:var(--ac2);border-bottom-color:var(--ac2)}
+.ntab:hover:not(.active){color:var(--tx)}
+/* ── panels ── */
+.panel{display:none}.panel.active{display:block;animation:up .22s ease}
+@keyframes up{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+/* ── form ── */
+.field{margin-bottom:1.2rem}
+.lbl{display:block;font-size:11px;letter-spacing:.08em;color:var(--mt);margin-bottom:6px;font-family:var(--mono);text-transform:uppercase}
+input[type=text],input[type=password],textarea{width:100%;background:var(--s1);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--sans);font-size:14px;padding:10px 14px;outline:none;transition:border .18s;resize:vertical}
+input:focus,textarea:focus{border-color:var(--ac)}
+textarea{min-height:190px;line-height:1.7}
+.hint{font-size:11px;color:var(--mt);margin-top:5px}
+.err-msg{color:var(--er);font-size:13px;margin-top:8px;padding:8px 12px;background:rgba(248,113,113,.08);border-radius:7px;border:1px solid rgba(248,113,113,.2)}
+.ok-msg{color:var(--ok);font-size:13px;margin-top:8px;padding:8px 12px;background:rgba(74,222,128,.08);border-radius:7px;border:1px solid rgba(74,222,128,.2)}
+/* ── upload ── */
+.drop{border:1.5px dashed var(--bd2);border-radius:10px;padding:1.75rem 1.5rem;text-align:center;cursor:pointer;transition:all .18s;position:relative;background:var(--s1)}
+.drop:hover,.drop.over{border-color:var(--ac);background:rgba(124,106,247,.06)}
+.drop input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.drop-icon{font-size:28px;margin-bottom:6px;opacity:.4;display:block}
+.drop p{font-size:13px;color:var(--mt)}
+.drop strong{color:var(--tx);font-weight:500}
+.flist{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.fi{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:7px;font-size:13px}
+.fi .fn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi .fs{color:var(--mt);font-family:var(--mono);font-size:11px}
+.fi-rm{cursor:pointer;color:var(--er);opacity:.7;background:none;border:none;font-size:16px;line-height:1;padding:0 2px}
+.fi-rm:hover{opacity:1}
+/* ── switch ── */
+.sw-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--s1);border-radius:8px;border:1px solid var(--bd)}
+.sw-row span{font-size:14px}
+.sw{position:relative;width:42px;height:24px}.sw input{opacity:0;width:0;height:0}
+.sw-track{position:absolute;inset:0;border-radius:24px;background:var(--bd2);cursor:pointer;transition:.2s}
+.sw-track:before{content:'';position:absolute;width:18px;height:18px;border-radius:50%;background:#fff;left:3px;top:3px;transition:.2s}
+.sw input:checked+.sw-track{background:var(--ac)}
+.sw input:checked+.sw-track:before{transform:translateX(18px)}
+/* ── expire pills ── */
+.ep-row{display:flex;gap:8px;flex-wrap:wrap}
+.ep{padding:5px 14px;border-radius:20px;font-size:12px;font-family:var(--mono);cursor:pointer;border:1px solid var(--bd2);background:var(--s1);color:var(--mt);transition:all .15s}
+.ep.on{border-color:var(--ac);background:rgba(124,106,247,.14);color:var(--ac2)}
+/* ── sep ── */
+.sep{border:none;border-top:1px solid var(--bd);margin:1.5rem 0}
+/* ── spinner ── */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes rot{to{transform:rotate(360deg)}}
+/* ── result card ── */
+.rcard{background:var(--s1);border:1px solid var(--bd2);border-radius:12px;padding:1.5rem;margin-top:1.5rem;animation:up .3s ease}
+.rcard h3{font-size:11px;letter-spacing:.1em;color:var(--mt);font-family:var(--mono);margin-bottom:1rem;text-transform:uppercase}
+.url-row{display:flex;align-items:center;gap:8px;background:var(--s2);border-radius:8px;padding:10px 14px;margin-bottom:10px}
+.url-txt{flex:1;font-family:var(--mono);font-size:13px;color:var(--ac2);word-break:break-all}
+.btn-copy{padding:5px 12px;border-radius:6px;font-size:11px;font-family:var(--mono);cursor:pointer;border:1px solid var(--bd2);background:transparent;color:var(--mt);white-space:nowrap;transition:all .15s}
+.btn-copy:hover{color:var(--tx);border-color:var(--ac)}
+.btn-copy.ok{color:var(--ok);border-color:var(--ok)}
+/* ── tags ── */
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-family:var(--mono)}
+.tg-lock{background:rgba(74,222,128,.1);color:var(--ok);border:1px solid rgba(74,222,128,.2)}
+.tg-open{background:rgba(124,106,247,.1);color:var(--ac2);border:1px solid rgba(124,106,247,.2)}
+.tg-exp{background:rgba(251,191,36,.08);color:var(--wn);border:1px solid rgba(251,191,36,.2)}
+.tg-ever{background:rgba(124,106,247,.08);color:var(--ac2);border:1px solid rgba(124,106,247,.18)}
+.meta-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* ── login page ── */
+.login-wrap{min-height:80vh;display:flex;align-items:center;justify-content:center}
+.login-card{background:var(--s1);border:1px solid var(--bd2);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;animation:up .3s ease}
+.login-card .logo-big{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#7c6af7,#c084fc);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:26px;color:#fff;margin:0 auto 1.25rem}
+.login-card h2{text-align:center;font-size:20px;font-weight:500;margin-bottom:4px}
+.login-card p{text-align:center;font-size:13px;color:var(--mt);margin-bottom:1.75rem}
+/* ── share list ── */
+.share-list{display:flex;flex-direction:column;gap:10px}
+.share-item{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;transition:border .15s}
+.share-item:hover{border-color:var(--bd2)}
+.si-info{flex:1;min-width:0}
+.si-title{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:3px}
+.si-meta{font-size:11px;color:var(--mt);font-family:var(--mono);display:flex;gap:10px;flex-wrap:wrap}
+.si-actions{display:flex;gap:6px;flex-shrink:0}
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--mt);font-size:14px}
+/* ── view page ── */
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--mt);cursor:pointer;background:none;border:none;padding:0;margin-bottom:1.75rem;font-family:var(--sans);transition:color .15s}
+.back-btn:hover{color:var(--tx)}
+.lock-gate{text-align:center;padding:3.5rem 1rem}
+.lock-icon{font-size:46px;margin-bottom:1rem;opacity:.4}
+.lock-gate h2{font-size:20px;font-weight:500;margin-bottom:6px}
+.lock-gate p{font-size:14px;color:var(--mt);margin-bottom:1.5rem}
+.lock-form{max-width:300px;margin:0 auto}
+.lock-form input{text-align:center;margin-bottom:10px}
+.view-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:1.5rem}
+.view-title{font-size:21px;font-weight:500;margin-bottom:4px}
+.view-meta-txt{font-size:12px;color:var(--mt);font-family:var(--mono)}
+.cblock{background:var(--s1);border-radius:12px;padding:1.5rem;border:1px solid var(--bd);margin-bottom:1rem;animation:up .25s ease}
+.cblock h3{font-size:11px;letter-spacing:.1em;color:var(--mt);margin-bottom:12px;font-family:var(--mono);text-transform:uppercase}
+.ctext{font-size:14px;line-height:1.85;white-space:pre-wrap;word-break:break-word}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:10px}
+.fcard{background:var(--s2);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:5px;cursor:pointer;border:1px solid var(--bd);transition:all .15s;text-decoration:none;color:inherit}
+.fcard:hover{border-color:var(--ac);background:rgba(124,106,247,.05)}
+.fc-ext{font-family:var(--mono);font-size:11px;color:var(--ac2);text-transform:uppercase}
+.fc-name{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc-size{font-size:11px;color:var(--mt);font-family:var(--mono)}
+.fc-dl{font-size:11px;color:var(--ac2);font-family:var(--mono);margin-top:2px}
+/* ── settings ── */
+.settings-section{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:1.5rem;margin-bottom:1.25rem}
+.settings-section h3{font-size:12px;letter-spacing:.08em;color:var(--mt);font-family:var(--mono);text-transform:uppercase;margin-bottom:1rem;padding-bottom:8px;border-bottom:1px solid var(--bd)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:520px){.row2{grid-template-columns:1fr}}
+/* ── tabs inside create ── */
+.ctabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:1.75rem}
+.ctab{padding:.55rem 1.1rem;font-size:13px;color:var(--mt);cursor:pointer;border:none;border-bottom:2px solid transparent;background:none;font-family:var(--mono);letter-spacing:.04em;transition:all .18s}
+.ctab.active{color:var(--ac2);border-bottom-color:var(--ac2)}
+.ctab:hover:not(.active){color:var(--tx)}
+</style>
+</head>
+<body>
+<div class="page" id="app"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  loggedIn: false, viewRequiresLogin: false,
+  navTab: 'create',  // create | list | settings
+  createTab: 'text', expiry: 86400, useKey: false,
+  filesText: [], filesFile: [], filesBoth: []
+};
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const h = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function fmtSize(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(1)+'MB'}
+function fmtDate(ts){return new Date(ts).toLocaleString('zh-CN',{hour12:false})}
+function fmtExpiry(e){if(!e)return'永久';const d=Math.round((e-Date.now())/86400000);if(d<0)return'已过期';if(d===0)return'今天到期';return d+'天后到期'}
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(method, url, body, isForm) {
+  const opts = { method, headers: {} };
+  if (body && isForm) opts.body = body;
+  else if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const r = await fetch(url, opts);
+  const data = await r.json();
+  return { ok: r.ok, status: r.status, data };
+}
+
+// ── Router ────────────────────────────────────────────────────────────────────
+async function boot() {
+  const { ok, data } = await api('GET', '/api/auth/status');
+  if (ok) { S.loggedIn = data.loggedIn; S.viewRequiresLogin = data.viewRequiresLogin; }
+
+  const m = location.pathname.match(/^\/s\/([a-zA-Z0-9_-]{8,12})$/);
+  if (m) { renderView(m[1]); return; }
+
+  if (!S.loggedIn) { renderLogin(); return; }
+  render();
+}
+window.addEventListener('popstate', boot);
+
+// ════════════════════════════════════════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════════════════════════════════════════
+function renderLogin() {
+  document.title = 'PasteVault — 登录';
+  $('app').innerHTML = `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="logo-big">P</div>
+      <h2>PasteVault</h2>
+      <p>请输入管理员密码</p>
+      <div class="field"><input type="password" id="login-pwd" placeholder="密码" autofocus /></div>
+      <div id="login-err"></div>
+      <button class="btn btn-primary" style="width:100%;padding:11px;font-size:14px" id="login-btn">登录</button>
+    </div>
+  </div>`;
+
+  const doLogin = async () => {
+    const pwd = $('login-pwd').value;
+    if (!pwd) return;
+    $('login-btn').disabled = true;
+    $('login-btn').innerHTML = '<span class="spin"></span>验证中…';
+    const { ok, data } = await api('POST', '/api/auth/login', { password: pwd });
+    if (ok) { S.loggedIn = true; render(); }
+    else {
+      $('login-err').innerHTML = `<div class="err-msg">${h(data.error)}</div>`;
+      $('login-btn').disabled = false; $('login-btn').textContent = '登录';
+    }
+  };
+  $('login-btn').addEventListener('click', doLogin);
+  $('login-pwd').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MAIN SHELL
+// ════════════════════════════════════════════════════════════════════════════
+function render() {
+  document.title = 'PasteVault';
+  $('app').innerHTML = `
+  <header>
+    <div class="brand">
+      <div class="logo">P</div>
+      <div><div class="brand-name">PasteVault</div><div class="brand-sub">安全内容分享</div></div>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="logout-btn">退出登录</button>
+    </div>
+  </header>
+  <div class="nav-tabs">
+    <button class="ntab ${S.navTab==='create'?'active':''}" data-nav="create">新建分享</button>
+    <button class="ntab ${S.navTab==='list'?'active':''}"   data-nav="list">我的分享</button>
+    <button class="ntab ${S.navTab==='settings'?'active':''}" data-nav="settings">设置</button>
+  </div>
+  <div id="nav-content"></div>`;
+
+  document.querySelectorAll('.ntab').forEach(t => t.addEventListener('click', () => {
+    S.navTab = t.dataset.nav;
+    document.querySelectorAll('.ntab').forEach(x => x.classList.toggle('active', x.dataset.nav === S.navTab));
+    renderNavContent();
+  }));
+  $('logout-btn').addEventListener('click', async () => {
+    await api('POST', '/api/auth/logout');
+    S.loggedIn = false; renderLogin();
+  });
+  renderNavContent();
+}
+
+function renderNavContent() {
+  if (S.navTab === 'create')   renderCreate();
+  else if (S.navTab === 'list')     renderList();
+  else if (S.navTab === 'settings') renderSettings();
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// CREATE
+// ════════════════════════════════════════════════════════════════════════════
+function renderCreate() {
+  const nc = $('nav-content');
+  nc.innerHTML = `
+  <div class="ctabs">
+    <button class="ctab ${S.createTab==='text'?'active':''}" data-ct="text">纯文本</button>
+    <button class="ctab ${S.createTab==='file'?'active':''}" data-ct="file">上传文件</button>
+    <button class="ctab ${S.createTab==='both'?'active':''}" data-ct="both">文本 + 文件</button>
+  </div>
+
+  <div class="panel ${S.createTab==='text'?'active':''}" id="ct-text">
+    <div class="field"><label class="lbl">标题（可选）</label><input type="text" id="ti-text" placeholder="起个名字…" /></div>
+    <div class="field"><label class="lbl">文本内容</label><textarea id="co-text" placeholder="粘贴文本、代码、链接、笔记…"></textarea></div>
+  </div>
+  <div class="panel ${S.createTab==='file'?'active':''}" id="ct-file">
+    <div class="field"><label class="lbl">标题（可选）</label><input type="text" id="ti-file" placeholder="起个名字…" /></div>
+    <div class="field"><label class="lbl">上传文件</label>
+      <div class="drop" id="dp-file"><input type="file" id="fi-file" multiple/>
+        <span class="drop-icon">📁</span><p><strong>点击选择</strong> 或拖拽文件到此处</p>
+        <p style="font-size:11px;margin-top:3px">任意格式，单文件最大 200 MB</p>
+      </div>
+      <div class="flist" id="fl-file"></div>
+    </div>
+  </div>
+  <div class="panel ${S.createTab==='both'?'active':''}" id="ct-both">
+    <div class="field"><label class="lbl">标题（可选）</label><input type="text" id="ti-both" placeholder="起个名字…" /></div>
+    <div class="field"><label class="lbl">文本内容</label><textarea id="co-both" placeholder="输入文本…"></textarea></div>
+    <div class="field"><label class="lbl">附件</label>
+      <div class="drop" id="dp-both"><input type="file" id="fi-both" multiple/>
+        <span class="drop-icon">📎</span><p><strong>点击选择</strong> 或拖拽文件</p>
+      </div>
+      <div class="flist" id="fl-both"></div>
+    </div>
+  </div>
+
+  <hr class="sep">
+  <div class="field">
+    <div class="sw-row">
+      <span>🔒 设置访问密钥</span>
+      <label class="sw"><input type="checkbox" id="use-key" ${S.useKey?'checked':''}/><span class="sw-track"></span></label>
+    </div>
+    <div id="key-wrap" style="margin-top:10px;${S.useKey?'':'display:none'}">
+      <input type="password" id="share-key" placeholder="输入密钥（6 位以上）"/>
+      <p class="hint">访问者需输入正确密钥才能查看内容</p>
+    </div>
+  </div>
+  <div class="field">
+    <label class="lbl">有效期</label>
+    <div class="ep-row" id="ep-row">
+      ${[['3600','1 小时'],['86400','1 天'],['604800','7 天'],['2592000','30 天'],['0','永久']].map(([v,l])=>
+        `<button class="ep ${S.expiry==v?'on':''}" data-v="${v}">${l}</button>`).join('')}
+    </div>
+  </div>
+  <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px" id="submit-btn">生成分享链接</button>
+  <div id="create-result"></div>`;
+
+  // ctab switch
+  nc.querySelectorAll('.ctab').forEach(t => t.addEventListener('click', () => {
+    S.createTab = t.dataset.ct;
+    nc.querySelectorAll('.ctab').forEach(x => x.classList.toggle('active', x.dataset.ct === S.createTab));
+    nc.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    $('ct-' + S.createTab).classList.add('active');
+  }));
+
+  setupDrop('dp-file','fi-file','fl-file', S.filesText.length ? S.filesText : (S.filesFile));
+  setupDrop('dp-both','fi-both','fl-both', S.filesBoth);
+  renderFL('fl-file', S.filesFile);
+  renderFL('fl-both', S.filesBoth);
+
+  $('use-key').addEventListener('change', function(){ S.useKey=this.checked; $('key-wrap').style.display=this.checked?'block':'none'; });
+  nc.querySelectorAll('.ep').forEach(b => b.addEventListener('click', () => {
+    S.expiry = parseInt(b.dataset.v);
+    nc.querySelectorAll('.ep').forEach(x => x.classList.toggle('on', x.dataset.v == b.dataset.v));
+  }));
+  $('submit-btn').addEventListener('click', doCreate);
+}
+
+function setupDrop(did, iid, lid, arr) {
+  const drop=$( did), inp=$(iid);
+  inp.addEventListener('change', ()=>{ addFiles(inp.files, lid, arr); inp.value=''; });
+  drop.addEventListener('dragover', e=>{e.preventDefault();drop.classList.add('over');});
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+  drop.addEventListener('drop', e=>{e.preventDefault();drop.classList.remove('over');addFiles(e.dataTransfer.files, lid, arr);});
+}
+function addFiles(files, lid, arr) {
+  Array.from(files).forEach(f=>{
+    if(f.size>200*1024*1024){showRes('create-result',`文件超过 200 MB：${f.name}`,true);return;}
+    arr.push(f);
+  });
+  renderFL(lid, arr);
+}
+function renderFL(lid, arr) {
+  const el=$(lid); if(!el)return;
+  el.innerHTML = arr.map((f,i)=>`
+    <div class="fi">
+      <span class="fn">${h(f.name)}</span>
+      <span class="fs">${fmtSize(f.size)}</span>
+      <button class="fi-rm" data-lid="${lid}" data-i="${i}">✕</button>
+    </div>`).join('');
+  el.querySelectorAll('.fi-rm').forEach(b=>b.addEventListener('click',()=>{
+    const a = b.dataset.lid==='fl-file'?S.filesFile:S.filesBoth;
+    a.splice(parseInt(b.dataset.i),1); renderFL(b.dataset.lid, a);
+  }));
+}
+function showRes(id, msg, isErr) {
+  const el=$(id); if(!el)return;
+  el.innerHTML=`<div class="${isErr?'err-msg':'ok-msg'}">${h(msg)}</div>`;
+}
+
+async function doCreate() {
+  const btn=$('submit-btn'), res=$('create-result');
+  let title='',text='',files=[];
+  if(S.createTab==='text'){ title=$('ti-text').value.trim(); text=$('co-text').value.trim(); if(!text){showRes('create-result','请输入文本内容',true);return;} }
+  else if(S.createTab==='file'){ title=$('ti-file').value.trim(); files=S.filesFile; if(!files.length){showRes('create-result','请选择至少一个文件',true);return;} }
+  else{ title=$('ti-both').value.trim(); text=$('co-both').value.trim(); files=S.filesBoth; if(!text&&!files.length){showRes('create-result','请输入内容或上传文件',true);return;} }
+
+  const useKey=S.useKey, passkey=useKey?$('share-key').value.trim():'';
+  if(useKey&&!passkey){showRes('create-result','请输入访问密钥',true);return;}
+
+  btn.disabled=true; res.innerHTML='';
+
+  const fd=new FormData();
+  fd.append('title',title); fd.append('text',text);
+  fd.append('passkey',passkey);
+  fd.append('expiry',S.expiry);
+  files.forEach(f=>fd.append('files',f));
+
+  // 显示进度条
+  btn.innerHTML='<span class="spin"></span>上传中… 0%';
+  res.innerHTML=`<div style="margin-top:12px"><div style="background:var(--s2);border-radius:6px;height:8px;overflow:hidden"><div id="upload-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--ac),var(--ac2));border-radius:6px;transition:width .2s"></div></div><div id="upload-pct" style="font-size:12px;color:var(--mt);font-family:var(--mono);margin-top:6px;text-align:center">0%</div></div>`;
+
+  const xhr = new XMLHttpRequest();
+  xhr.timeout = 10 * 60 * 1000; // 10 分钟超时
+
+  xhr.upload.addEventListener('progress', (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded / e.total * 100);
+      const bar = $('upload-bar'); if(bar) bar.style.width = pct + '%';
+      const txt = $('upload-pct'); if(txt) txt.textContent = pct + '% (' + fmtSize(e.loaded) + ' / ' + fmtSize(e.total) + ')';
+      btn.innerHTML = '<span class="spin"></span>上传中… ' + pct + '%';
+    }
+  });
+
+  xhr.addEventListener('load', () => {
+    try {
+      const ct = xhr.getResponseHeader('Content-Type') || '';
+      if (!ct.includes('application/json')) {
+        if (xhr.status === 413) {
+          showRes('create-result', '文件太大，服务器拒绝接收（请检查 Nginx client_max_body_size 配置）', true);
+        } else {
+          showRes('create-result', '服务器返回异常（HTTP ' + xhr.status + '），请检查服务器配置', true);
+        }
+        btn.disabled=false; btn.innerHTML='生成分享链接';
+        return;
+      }
+      const data = JSON.parse(xhr.responseText);
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const shareUrl = location.origin + data.url;
+        const epLabel = document.querySelector('.ep.on')?.textContent || '';
+        res.innerHTML=`
+          <div class="rcard">
+            <h3>🎉 分享已创建</h3>
+            <div class="url-row">
+              <span class="url-txt">${h(shareUrl)}</span>
+              <button class="btn-copy" id="copy-btn">复制</button>
+            </div>
+            <div class="meta-row" style="margin-top:8px">
+              ${passkey?'<span class="tag tg-lock">🔒 需要密钥</span>':'<span class="tag tg-open">🌐 公开</span>'}
+              ${S.expiry?`<span class="tag tg-exp">⏱ ${h(epLabel)}</span>`:'<span class="tag tg-ever">♾ 永久</span>'}
+            </div>
+            <button class="btn" style="width:100%;margin-top:12px" id="preview-btn">预览此分享 →</button>
+          </div>`;
+        $('copy-btn').addEventListener('click',()=>{
+          navigator.clipboard.writeText(shareUrl).then(()=>{
+            $('copy-btn').textContent='已复制 ✓'; $('copy-btn').classList.add('ok');
+            setTimeout(()=>{$('copy-btn').textContent='复制';$('copy-btn').classList.remove('ok');},2000);
+          });
+        });
+        $('preview-btn').addEventListener('click',()=>{ history.pushState(null,'',data.url); renderView(data.id); });
+        S.filesFile.length=0; S.filesBoth.length=0;
+      } else {
+        showRes('create-result', data.error || '上传失败', true);
+      }
+    } catch(e) { showRes('create-result', '服务器响应异常', true); }
+    btn.disabled=false; btn.innerHTML='生成分享链接';
+  });
+
+  xhr.addEventListener('error', () => {
+    showRes('create-result', '网络错误，上传失败', true);
+    btn.disabled=false; btn.innerHTML='生成分享链接';
+  });
+
+  xhr.addEventListener('timeout', () => {
+    showRes('create-result', '上传超时，请检查网络后重试', true);
+    btn.disabled=false; btn.innerHTML='生成分享链接';
+  });
+
+  xhr.open('POST', '/api/share');
+  xhr.send(fd);
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// LIST
+// ════════════════════════════════════════════════════════════════════════════
+async function renderList() {
+  $('nav-content').innerHTML=`<div style="text-align:center;padding:2rem;color:var(--mt)"><span class="spin"></span> 加载中…</div>`;
+  const {ok,data}=await api('GET','/api/shares');
+  if(!ok){$('nav-content').innerHTML=`<div class="err-msg">${h(data.error)}</div>`;return;}
+
+  if(!data.length){
+    $('nav-content').innerHTML=`<div class="empty-state">📭<br><br>暂无分享，去新建一个吧</div>`;
+    return;
+  }
+
+  $('nav-content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <span style="font-size:13px;color:var(--mt);font-family:var(--mono)">共 ${data.length} 条分享</span>
+    </div>
+    <div class="share-list" id="share-list">
+      ${data.map(s=>`
+        <div class="share-item" id="si-${s.id}">
+          <div class="si-info">
+            <div class="si-title">${h(s.title||'（无标题）')}</div>
+            <div class="si-meta">
+              <span>${fmtDate(s.created)}</span>
+              <span>${fmtExpiry(s.expiry)}</span>
+              ${s.hasPasskey?'<span>🔒 有密钥</span>':''}
+              ${s.fileCount?`<span>📎 ${s.fileCount} 个文件</span>`:''}
+              ${s.hasText?'<span>📝 含文本</span>':''}
+            </div>
+          </div>
+          <div class="si-actions">
+            <button class="btn" data-view="${s.id}">查看</button>
+            <button class="btn btn-danger" data-del="${s.id}">删除</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+
+  $('nav-content').querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+    history.pushState(null,'',`/s/${b.dataset.view}`); renderView(b.dataset.view);
+  }));
+  $('nav-content').querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',async()=>{
+    if(!confirm('确认删除这条分享？')) return;
+    b.disabled=true; b.textContent='删除中…';
+    const {ok}=await api('DELETE',`/api/share/${b.dataset.del}`);
+    if(ok){ const row=$(`si-${b.dataset.del}`); if(row)row.remove(); }
+    else { b.disabled=false; b.textContent='删除'; }
+  }));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// SETTINGS
+// ════════════════════════════════════════════════════════════════════════════
+function renderSettings() {
+  $('nav-content').innerHTML=`
+  <div class="settings-section">
+    <h3>访问控制</h3>
+    <div class="sw-row">
+      <span style="font-size:14px">
+        <span style="font-weight:500">查看分享需要登录</span><br>
+        <span style="font-size:12px;color:var(--mt)">开启后，未登录用户无法通过分享链接查看内容</span>
+      </span>
+      <label class="sw">
+        <input type="checkbox" id="vrl-toggle" ${S.viewRequiresLogin?'checked':''}/>
+        <span class="sw-track"></span>
+      </label>
+    </div>
+    <div id="vrl-msg" style="margin-top:8px"></div>
+  </div>
+
+  <div class="settings-section">
+    <h3>修改密码</h3>
+    <div class="row2">
+      <div class="field"><label class="lbl">原密码</label><input type="password" id="old-pwd" placeholder="当前密码"/></div>
+      <div class="field"><label class="lbl">新密码（至少 6 位）</label><input type="password" id="new-pwd" placeholder="新密码"/></div>
+    </div>
+    <div id="pwd-msg"></div>
+    <button class="btn btn-primary" style="margin-top:4px" id="change-pwd-btn">更新密码</button>
+  </div>`;
+
+  $('vrl-toggle').addEventListener('change', async function(){
+    const v=this.checked;
+    const {ok,data}=await api('POST','/api/auth/settings',{viewRequiresLogin:v});
+    if(ok){ S.viewRequiresLogin=data.viewRequiresLogin; $('vrl-msg').innerHTML=`<div class="ok-msg">已${v?'开启':'关闭'}查看登录限制</div>`; setTimeout(()=>$('vrl-msg').innerHTML='',2500); }
+    else { this.checked=!v; $('vrl-msg').innerHTML=`<div class="err-msg">${h(data.error)}</div>`; }
+  });
+
+  $('change-pwd-btn').addEventListener('click', async()=>{
+    const op=$('old-pwd').value, np=$('new-pwd').value;
+    if(!op||!np){$('pwd-msg').innerHTML='<div class="err-msg">请填写原密码和新密码</div>';return;}
+    $('change-pwd-btn').disabled=true; $('change-pwd-btn').innerHTML='<span class="spin"></span>更新中…';
+    const {ok,data}=await api('POST','/api/auth/change-password',{oldPassword:op,newPassword:np});
+    if(ok){$('pwd-msg').innerHTML='<div class="ok-msg">密码已更新，已自动保持登录</div>';$('old-pwd').value='';$('new-pwd').value='';}
+    else $('pwd-msg').innerHTML=`<div class="err-msg">${h(data.error)}</div>`;
+    $('change-pwd-btn').disabled=false; $('change-pwd-btn').textContent='更新密码';
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// VIEW (public share page)
+// ════════════════════════════════════════════════════════════════════════════
+async function renderView(id) {
+  document.title='PasteVault — 查看分享';
+  $('app').innerHTML=`
+  <header>
+    <div class="brand"><div class="logo">P</div><div><div class="brand-name">PasteVault</div></div></div>
+  </header>
+  <button class="back-btn" id="back-btn">← ${S.loggedIn?'返回管理':'创建新分享'}</button>
+  <div id="view-area"><div style="text-align:center;padding:3rem;color:var(--mt)"><span class="spin"></span> 加载中…</div></div>`;
+
+  $('back-btn').addEventListener('click', ()=>{
+    history.pushState(null,'','/');
+    if(S.loggedIn) render(); else renderLogin();
+  });
+
+  try {
+    const {ok,status,data}=await api('GET',`/api/share/${id}`);
+    if(status===401&&data.needLogin){ renderNeedLogin(id); return; }
+    if(!ok){ showViewErr(data.error||'内容不存在'); return; }
+    if(data.hasPasskey) renderLockGate(id,data);
+    else {
+      const r2=await api('POST',`/api/share/${id}/unlock`,{});
+      if(!r2.ok){ showViewErr(r2.data.error); return; }
+      renderContent(r2.data);
+    }
+  } catch(e){ showViewErr('网络错误，请稍后重试'); }
+}
+
+function showViewErr(msg) { $('view-area').innerHTML=`<div class="lock-gate"><div class="lock-icon">🔍</div><h2>无法访问</h2><p>${h(msg)}</p></div>`; }
+
+function renderNeedLogin(id) {
+  $('view-area').innerHTML=`
+    <div class="lock-gate">
+      <div class="lock-icon">🔒</div>
+      <h2>需要登录</h2>
+      <p>此站点要求登录后才能查看分享内容</p>
+      <div class="lock-form">
+        <input type="password" id="lock-admin-pwd" placeholder="管理员密码"/>
+        <div id="lock-admin-err" style="display:none" class="err-msg">密码不正确</div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px" id="lock-login-btn">登录后查看</button>
+      </div>
+    </div>`;
+  const doLogin=async()=>{
+    const pwd=$('lock-admin-pwd').value; if(!pwd)return;
+    $('lock-login-btn').disabled=true; $('lock-login-btn').innerHTML='<span class="spin"></span>登录中…';
+    const {ok}=await api('POST','/api/auth/login',{password:pwd});
+    if(ok){ S.loggedIn=true; renderView(id); }
+    else{ $('lock-admin-err').style.display='block'; $('lock-login-btn').disabled=false; $('lock-login-btn').textContent='登录后查看'; }
+  };
+  $('lock-login-btn').addEventListener('click',doLogin);
+  $('lock-admin-pwd').addEventListener('keydown',e=>{ if(e.key==='Enter')doLogin(); });
+}
+
+function renderLockGate(id, meta) {
+  $('view-area').innerHTML=`
+    <div class="lock-gate">
+      <div class="lock-icon">🔒</div>
+      <h2>${h(meta.title||'加密内容')}</h2>
+      <p>此内容受密钥保护，请输入访问密钥</p>
+      <div class="lock-form">
+        <input type="password" id="share-pwd" placeholder="输入密钥"/>
+        <div id="share-pwd-err" style="display:none" class="err-msg">密钥不正确，请重试</div>
+        <button class="btn btn-primary" style="width:100%;margin-top:10px" id="unlock-btn">确认访问</button>
+      </div>
+    </div>`;
+  const doUnlock=async()=>{
+    const k=$('share-pwd').value; if(!k)return;
+    $('unlock-btn').disabled=true; $('unlock-btn').innerHTML='<span class="spin"></span>验证中…';
+    $('share-pwd-err').style.display='none';
+    const {ok,data}=await api('POST',`/api/share/${id}/unlock`,{passkey:k});
+    if(ok) renderContent(data);
+    else{ $('share-pwd-err').style.display='block'; $('unlock-btn').disabled=false; $('unlock-btn').textContent='确认访问'; }
+  };
+  $('unlock-btn').addEventListener('click',doUnlock);
+  $('share-pwd').addEventListener('keydown',e=>{ if(e.key==='Enter')doUnlock(); });
+}
+
+function renderContent(share) {
+  const ea=share.expiry===0?'永久':fmtDate(share.expiry);
+  let html=`
+    <div class="view-header">
+      <div>
+        <div class="view-title">${h(share.title||'未命名分享')}</div>
+        <div class="view-meta-txt">创建于 ${fmtDate(share.created)}</div>
+      </div>
+      <div class="meta-row">
+        ${share.expiry?`<span class="tag tg-exp">⏱ 至 ${h(ea)}</span>`:'<span class="tag tg-ever">♾ 永久</span>'}
+      </div>
+    </div>`;
+  if(share.text) html+=`<div class="cblock"><h3>文本内容</h3><div class="ctext">${h(share.text)}</div></div>`;
+  if(share.files?.length){
+    html+=`<div class="cblock"><h3>附件文件（${share.files.length}）</h3><div class="fgrid">`;
+    share.files.forEach(f=>{
+      const ext=f.name.split('.').pop().slice(0,6);
+      html+=`<a class="fcard" href="${h(f.url)}" download="${h(f.name)}">
+        <span class="fc-ext">${h(ext)}</span>
+        <span class="fc-name">${h(f.name)}</span>
+        <span class="fc-size">${fmtSize(f.size)}</span>
+        <span class="fc-dl">点击下载 ↓</span>
+      </a>`;
+    });
+    html+=`</div></div>`;
+  }
+  $('view-area').innerHTML=html;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
