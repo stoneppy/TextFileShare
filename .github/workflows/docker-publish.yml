@@ -27,6 +27,6 @@ jobs:
           push: true
           tags: |
             ${{ vars.DOCKERHUB_USERNAME }}/pastevault:latest
-            ${{ vars.DOCKERHUB_USERNAME }}/pastevault:1.0.0
+            ${{ vars.DOCKERHUB_USERNAME }}/pastevault:1.1.0
           cache-from: type=gha
           cache-to: type=gha,mode=max

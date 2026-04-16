@@ -494,12 +494,23 @@ async function renderList() {
             </div>
           </div>
           <div class="si-actions">
+            <button class="btn" data-copy="${s.id}" title="复制链接">链接</button>
+            <button class="btn" data-edit="${s.id}">编辑</button>
             <button class="btn" data-view="${s.id}">查看</button>
             <button class="btn btn-danger" data-del="${s.id}">删除</button>
           </div>
         </div>`).join('')}
     </div>`;
 
+  $('nav-content').querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>{
+    const url=location.origin+'/s/'+b.dataset.copy;
+    navigator.clipboard.writeText(url).then(()=>{
+      b.textContent='已复制 ✓'; setTimeout(()=>b.textContent='链接',2000);
+    });
+  }));
+  $('nav-content').querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
+    renderEdit(b.dataset.edit);
+  }));
   $('nav-content').querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
     history.pushState(null,'',`/s/${b.dataset.view}`); renderView(b.dataset.view);
   }));
@@ -510,6 +521,124 @@ async function renderList() {
     if(ok){ const row=$(`si-${b.dataset.del}`); if(row)row.remove(); }
     else { b.disabled=false; b.textContent='删除'; }
   }));
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EDIT
+// ════════════════════════════════════════════════════════════════════════════
+async function renderEdit(id) {
+  $('nav-content').innerHTML=`<div style="text-align:center;padding:2rem;color:var(--mt)"><span class="spin"></span> 加载中…</div>`;
+  const {ok,data}=await api('GET',`/api/share/${id}/full`);
+  if(!ok){$('nav-content').innerHTML=`<div class="err-msg">${h(data.error)}</div>`;return;}
+
+  const shareUrl=location.origin+'/s/'+data.id;
+  S._editRemoveFiles=[];
+
+  $('nav-content').innerHTML=`
+    <button class="back-btn" id="edit-back">← 返回列表</button>
+    <div class="rcard" style="margin-top:0;margin-bottom:1.25rem">
+      <h3>分享链接</h3>
+      <div class="url-row">
+        <span class="url-txt">${h(shareUrl)}</span>
+        <button class="btn-copy" id="edit-copy-url">复制</button>
+      </div>
+    </div>
+    <div class="field"><label class="lbl">标题</label><input type="text" id="edit-title" value="${h(data.title)}" /></div>
+    <div class="field"><label class="lbl">文本内容</label><textarea id="edit-text" style="min-height:150px">${h(data.text)}</textarea></div>
+    <div class="field">
+      <label class="lbl">已有文件</label>
+      <div id="edit-existing-files">
+        ${data.files.length?data.files.map(f=>`
+          <div class="fi" id="ef-${h(f.storedName)}">
+            <span class="fn">${h(f.name)}</span>
+            <span class="fs">${fmtSize(f.size)}</span>
+            <button class="fi-rm" data-sn="${h(f.storedName)}">✕</button>
+          </div>`).join(''):'<p style="font-size:13px;color:var(--mt)">无文件</p>'}
+      </div>
+    </div>
+    <div class="field">
+      <label class="lbl">添加新文件</label>
+      <div class="drop" id="dp-edit"><input type="file" id="fi-edit" multiple/>
+        <span class="drop-icon">📎</span><p><strong>点击选择</strong> 或拖拽文件</p>
+      </div>
+      <div class="flist" id="fl-edit"></div>
+    </div>
+    <div class="field">
+      <label class="lbl">访问密钥</label>
+      <input type="password" id="edit-passkey" placeholder="${data.hasPasskey?'留空保持不变，输入新值则更新':'设置密钥（可选）'}" />
+      ${data.hasPasskey?'<p class="hint">当前已设置密钥。留空保持不变，输入新值则更新</p>':''}
+    </div>
+    <div id="edit-msg"></div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px" id="edit-save-btn">保存修改</button>`;
+
+  S._editFiles=[];
+
+  $('edit-back').addEventListener('click',()=>renderList());
+  $('edit-copy-url').addEventListener('click',()=>{
+    navigator.clipboard.writeText(shareUrl).then(()=>{
+      $('edit-copy-url').textContent='已复制 ✓'; $('edit-copy-url').classList.add('ok');
+      setTimeout(()=>{$('edit-copy-url').textContent='复制';$('edit-copy-url').classList.remove('ok');},2000);
+    });
+  });
+
+  // 删除已有文件
+  $('nav-content').querySelectorAll('.fi-rm[data-sn]').forEach(b=>b.addEventListener('click',()=>{
+    S._editRemoveFiles.push(b.dataset.sn);
+    const row=$('ef-'+b.dataset.sn); if(row)row.remove();
+  }));
+
+  // 新文件上传
+  setupDrop('dp-edit','fi-edit','fl-edit',S._editFiles);
+
+  $('edit-save-btn').addEventListener('click',async()=>{
+    const btn=$('edit-save-btn');
+    btn.disabled=true; btn.innerHTML='<span class="spin"></span>保存中…';
+    $('edit-msg').innerHTML='';
+
+    const fd=new FormData();
+    fd.append('title',$('edit-title').value.trim());
+    fd.append('text',$('edit-text').value);
+    const pk=$('edit-passkey').value.trim();
+    if(pk) fd.append('passkey',pk);
+    if(S._editRemoveFiles.length) fd.append('removeFiles',JSON.stringify(S._editRemoveFiles));
+    S._editFiles.forEach(f=>fd.append('files',f));
+
+    const xhr=new XMLHttpRequest();
+    xhr.timeout=10*60*1000;
+    xhr.upload.addEventListener('progress',(e)=>{
+      if(e.lengthComputable){
+        const pct=Math.round(e.loaded/e.total*100);
+        btn.innerHTML='<span class="spin"></span>保存中… '+pct+'%';
+      }
+    });
+    xhr.addEventListener('load',()=>{
+      try{
+        const ct=xhr.getResponseHeader('Content-Type')||'';
+        if(!ct.includes('application/json')){
+          $('edit-msg').innerHTML='<div class="err-msg">服务器返回异常</div>';
+          btn.disabled=false;btn.textContent='保存修改';return;
+        }
+        const r=JSON.parse(xhr.responseText);
+        if(xhr.status>=200&&xhr.status<300){
+          $('edit-msg').innerHTML='<div class="ok-msg">保存成功</div>';
+          setTimeout(()=>renderEdit(id),1500);
+        } else {
+          $('edit-msg').innerHTML=`<div class="err-msg">${h(r.error||'保存失败')}</div>`;
+        }
+      }catch(e){$('edit-msg').innerHTML='<div class="err-msg">响应异常</div>';}
+      btn.disabled=false;btn.textContent='保存修改';
+    });
+    xhr.addEventListener('error',()=>{
+      $('edit-msg').innerHTML='<div class="err-msg">网络错误</div>';
+      btn.disabled=false;btn.textContent='保存修改';
+    });
+    xhr.addEventListener('timeout',()=>{
+      $('edit-msg').innerHTML='<div class="err-msg">上传超时</div>';
+      btn.disabled=false;btn.textContent='保存修改';
+    });
+    xhr.open('PUT',`/api/share/${id}`);
+    xhr.send(fd);
+  });
 }
 
 // ════════════════════════════════════════════════════════════════════════════

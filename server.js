@@ -251,6 +251,74 @@ app.delete('/api/share/:id', requireLogin, (req, res) => {
   res.json({ ok: true });
 });
 
+// Edit (admin)
+app.put('/api/share/:id', requireLogin, (req, res) => {
+  upload.array('files', 20)(req, res, (err) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE')
+        return res.status(413).json({ error: '文件超过 200 MB 限制' });
+      return res.status(400).json({ error: '文件上传失败：' + err.message });
+    }
+    try {
+      const db = readDB(), share = db[req.params.id];
+      if (!share) return res.status(404).json({ error: '不存在' });
+
+      const { title, text, passkey, removeFiles } = req.body;
+
+      // 更新标题和文本
+      if (typeof title === 'string') share.title = title;
+      if (typeof text === 'string') share.text = text;
+
+      // 更新密钥
+      if (passkey === '') share.passkey = null;
+      else if (passkey) share.passkey = hashKey(passkey);
+
+      // 删除指定的旧文件
+      if (removeFiles) {
+        const toRemove = JSON.parse(removeFiles);
+        share.files = share.files.filter(f => {
+          if (toRemove.includes(f.storedName)) {
+            const filePath = f.monthDir
+              ? path.join(UPLOAD_DIR, f.monthDir, f.storedName)
+              : path.join(UPLOAD_DIR, f.storedName);
+            try { fs.unlinkSync(filePath); } catch (e) {}
+            return false;
+          }
+          return true;
+        });
+      }
+
+      // 添加新上传的文件
+      if (req.files && req.files.length) {
+        const monthDir = getMonthDir();
+        const newFiles = req.files.map(f => ({
+          storedName: f.filename, originalName: f.originalname, size: f.size, mimetype: f.mimetype, monthDir
+        }));
+        share.files = share.files.concat(newFiles);
+      }
+
+      share.updated = Date.now();
+      db[req.params.id] = share;
+      writeDB(db);
+      res.json({ ok: true, id: share.id, url: `/s/${share.id}` });
+    } catch (e) { console.error(e); res.status(500).json({ error: '服务器错误' }); }
+  });
+});
+
+// Get full share data (admin, for editing)
+app.get('/api/share/:id/full', requireLogin, (req, res) => {
+  const db = readDB(), share = db[req.params.id];
+  if (!share) return res.status(404).json({ error: '不存在' });
+  res.json({
+    id: share.id, title: share.title, text: share.text,
+    files: share.files.map(f => ({
+      storedName: f.storedName, name: f.originalName, size: f.size, mimetype: f.mimetype
+    })),
+    hasPasskey: !!share.passkey, created: share.created, expiry: share.expiry,
+    url: `/s/${share.id}`
+  });
+});
+
 // Metadata
 app.get('/api/share/:id', (req, res) => {
   if (viewGate(req, res)) return;
